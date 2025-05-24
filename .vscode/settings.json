@@ -1,4 +1,6 @@
 {
+  "rust-analyzer.cargo.target": "thumbv7em-none-eabihf",
+  "rust-analyzer.check.allTargets": false,
   "workbench.colorCustomizations": {
     "activityBar.activeBackground": "#b233ff",
     "activityBar.background": "#b233ff",
