@@ -1,4 +1,4 @@
-//! Reads the Barometric Pressure
+//! Reads the Barometric Pressure, Temperature, and Altitude
 
 #![no_std]
 #![no_main]
