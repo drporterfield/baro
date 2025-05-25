@@ -46,6 +46,7 @@ dependencies = [
  "defmt-rtt",
  "embassy-executor",
  "embassy-nrf",
+ "embassy-sync",
  "embassy-time",
  "embedded-graphics",
  "embedded-hal 1.0.0",

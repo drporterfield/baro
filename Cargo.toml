@@ -28,6 +28,7 @@ microfft = "0.6.0"
 embedded-graphics = "0.8.1"
 ssd1306 = "0.10.0"
 bmp390 = "0.4.1"
+embassy-sync = "0.6.2"
 
 
 [profile.release]
