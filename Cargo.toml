@@ -26,9 +26,10 @@ embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 num-integer = { version = "0.1.46", default-features = false }
 microfft = "0.6.0"
 embedded-graphics = "0.8.1"
-ssd1306 = "0.10.0"
+ssd1306 = { version = "0.10.0", features = ["async"] }
 bmp390 = "0.4.1"
 embassy-sync = "0.6.2"
+embassy-embedded-hal = "0.3.0"
 
 
 [profile.release]

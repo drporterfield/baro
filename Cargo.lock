@@ -44,6 +44,7 @@ dependencies = [
  "cortex-m-rt",
  "defmt 0.3.100",
  "defmt-rtt",
+ "embassy-embedded-hal",
  "embassy-executor",
  "embassy-nrf",
  "embassy-sync",
@@ -938,6 +939,7 @@ dependencies = [
  "display-interface-spi",
  "embedded-graphics-core",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
  "maybe-async-cfg",
 ]
 
