@@ -30,6 +30,8 @@ ssd1306 = { version = "0.10.0", features = ["async"] }
 bmp390 = "0.4.1"
 embassy-sync = "0.6.2"
 embassy-embedded-hal = "0.3.0"
+ryu = "1.0.20"
+uom = { version = "0.36.0", default-features = false, features = ["f32", "si"] }
 
 
 [profile.release]

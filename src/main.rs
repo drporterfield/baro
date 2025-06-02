@@ -4,7 +4,7 @@
 #![no_main]
 
 use defmt::*;
-use embassy_embedded_hal::shared_bus::asynch::i2c::{self, I2cDevice};
+use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals, twim };
 use embassy_sync::mutex::Mutex;
@@ -16,6 +16,7 @@ use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 use bmp390::{Bmp390};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
+use uom::si::length::foot;
 
 bind_interrupts!(struct Irqs {
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
@@ -65,7 +66,9 @@ async fn main(spawner: Spawner) {
 
     let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
 
-    Text::new("Hello Violet!", Point::new(0, 12), style) // (10, 24) halved these for 64x32
+    let mut buffer = ryu::Buffer::new();
+    let printed = buffer.format(measurement.altitude.get::<foot>());
+    Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
         .draw(&mut disp)
         .expect("Drawing text");
 
