@@ -44,7 +44,26 @@ async fn main(spawner: Spawner) {
 
     let i2c_sensor = I2cDevice::new(i2c_bus);
 
-    let bmp390_config = bmp390::Configuration::default();
+    // let bmp390_config = bmp390::Configuration::default(); // default configuration
+    let bmp390_config = bmp390::Configuration { 
+        power_control: bmp390::PowerControl {
+            enable_pressure: true,
+            enable_temperature: false,
+            mode: bmp390::PowerMode::Normal,
+        },
+        oversampling: bmp390::Osr {
+            pressure: bmp390::Oversampling::X8,
+            temperature: bmp390::Oversampling::None,
+        },
+        output_data_rate: bmp390::Odr {
+            odr_sel: bmp390::OdrSel::ODR_50,
+        },
+        iir_filter: bmp390::Config {
+            iir_filter: bmp390::IirFilter::coef_3,
+        },
+    };
+
+
     let mut sensor = Bmp390::try_new(i2c_sensor, bmp390::Address::Up, Delay, &bmp390_config)
         .await
         .unwrap();
