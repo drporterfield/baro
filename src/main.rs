@@ -47,8 +47,7 @@ async fn main(spawner: Spawner) {
     // This is one measurement using the BMP
     info!("Initializing BMP...");
     spawner.must_spawn(measure(i2c_bus));   
-    unwrap!(spawner.spawn(display(i2c_bus)));
-
+    spawner.must_spawn(display(i2c_bus));
 }
 
 #[embassy_executor::task]
@@ -101,15 +100,18 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     disp.init().await.expect("Display initialization");
     disp.flush().await.expect("Cleans the display");
 
-    let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
 
-    let mut buffer = ryu::Buffer::new();
-    // let printed = buffer.format(measurement.altitude.get::<foot>()); // measurement isn't shared properly here.
-    let printed = buffer.format(1.0034);
-    Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
-        .draw(&mut disp)
-        .expect("Drawing text");
+    loop {
+        let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
 
-    disp.flush().await.expect("Render display");
-    loop {}
+        let mut buffer = ryu::Buffer::new();
+        // let printed = buffer.format(measurement.altitude.get::<foot>()); // measurement isn't shared properly here.
+        let printed = buffer.format(1.0034);
+        Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
+            .draw(&mut disp)
+            .expect("Drawing text");
+    
+        disp.flush().await.expect("Render display");
+        Timer::after_secs(1).await;
+    }
 }
