@@ -6,7 +6,8 @@
 use defmt::*;
 use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
-use embassy_nrf::{ bind_interrupts, peripherals, twim };
+use embassy_nrf::{ bind_interrupts, peripherals };
+use embassy_nrf::twim::{ self, Twim };
 use embassy_sync::mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embedded_graphics::{mono_font::ascii::FONT_5X8, text::Text};
@@ -18,16 +19,20 @@ use bmp390::{Bmp390};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
 use uom::si::length::foot;
 
+type I2c1Bus = Mutex<NoopRawMutex, Twim<'static, peripherals::TWISPI0>>;
+
 bind_interrupts!(struct Irqs {
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
 });
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let p = embassy_nrf::init(Default::default());
+    let mut p = embassy_nrf::init(Default::default());
 
     info!("Initializing TWI...");
-    static I2C_BUS: StaticCell<Mutex<NoopRawMutex, twim::Twim<peripherals::TWISPI0>>> = StaticCell::new();
+    
+    // shared i2c bus
+    static I2C_BUS: StaticCell<I2c1Bus> = StaticCell::new();
     
     let twim_config = twim::Config::default();
     let i2c = twim::Twim::new(
@@ -41,7 +46,13 @@ async fn main(spawner: Spawner) {
 
     // This is one measurement using the BMP
     info!("Initializing BMP...");
+    spawner.must_spawn(measure(i2c_bus));   
+    unwrap!(spawner.spawn(display(i2c_bus)));
 
+}
+
+#[embassy_executor::task]
+async fn measure(i2c_bus: &'static I2c1Bus) {
     let i2c_sensor = I2cDevice::new(i2c_bus);
 
     // let bmp390_config = bmp390::Configuration::default(); // default configuration
@@ -67,12 +78,19 @@ async fn main(spawner: Spawner) {
     let mut sensor = Bmp390::try_new(i2c_sensor, bmp390::Address::Up, Delay, &bmp390_config)
         .await
         .unwrap();
+    loop{
+        // take one measurement and print it to info
+        let measurement = sensor.measure().await.unwrap();
+        defmt::info!("Measurement: {}", measurement);
 
-    // take one measurement and print it to info
-    let measurement = sensor.measure().await.unwrap();
-    defmt::info!("Measurement: {}", measurement);
+        Timer::after_secs(1).await;
+    }
+
     
+}
 
+#[embassy_executor::task]
+async fn display(i2c_bus: &'static I2c1Bus) {
     // Intended to be a hello world with the display. 
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
@@ -86,23 +104,12 @@ async fn main(spawner: Spawner) {
     let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
 
     let mut buffer = ryu::Buffer::new();
-    let printed = buffer.format(measurement.altitude.get::<foot>());
+    // let printed = buffer.format(measurement.altitude.get::<foot>()); // measurement isn't shared properly here.
+    let printed = buffer.format(1.0034);
     Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
         .draw(&mut disp)
         .expect("Drawing text");
 
     disp.flush().await.expect("Render display");
-    
-    // unwrap!(spawner.spawn(measure(i2c_sensor)));
-    // unwrap!(spawner.spawn(display()));
-
-}
-
-#[embassy_executor::task]
-async fn measure() {
-
-}
-
-#[embassy_executor::task]
-async fn display() {
+    loop {}
 }
