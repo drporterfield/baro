@@ -17,7 +17,7 @@ use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 use bmp390::{Bmp390};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
-use uom::si::length::foot;
+// use uom::si::length::foot;
 
 type I2c1Bus = Mutex<NoopRawMutex, Twim<'static, peripherals::TWISPI0>>;
 
@@ -27,7 +27,7 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let mut p = embassy_nrf::init(Default::default());
+    let p = embassy_nrf::init(Default::default());
 
     info!("Initializing TWI...");
     
