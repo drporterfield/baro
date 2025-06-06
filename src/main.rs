@@ -9,7 +9,7 @@ use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
 use embassy_nrf::twim::{ self, Twim };
 use embassy_sync::mutex::Mutex;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
 use embedded_graphics::{mono_font::ascii::FONT_5X8, text::Text};
 use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor, prelude::*};
 use embassy_time::{ Timer, Delay };
@@ -17,7 +17,10 @@ use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 use bmp390::{Bmp390};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
-// use uom::si::length::foot;
+use embassy_sync::signal::Signal;
+use uom::si::length::foot;
+
+static SHARED: Signal<ThreadModeRawMutex, f32> = Signal::new();
 
 type I2c1Bus = Mutex<NoopRawMutex, Twim<'static, peripherals::TWISPI0>>;
 
@@ -55,7 +58,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
     info!("Initializing BMP...");
     let i2c_sensor = I2cDevice::new(i2c_bus);
 
-    // let bmp390_config = bmp390::Configuration::default(); // default configuration
+    // let bmp390_config = bmp390::Configuration::default(); 
     let bmp390_config = bmp390::Configuration { 
         power_control: bmp390::PowerControl {
             enable_pressure: true,
@@ -82,7 +85,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
         // take one measurement and print it to info
         let measurement = sensor.measure().await.unwrap();
         defmt::info!("Measurement: {}", measurement);
-
+        SHARED.signal(measurement.altitude.get::<foot>());
         Timer::after_secs(1).await;
     }
 
@@ -101,13 +104,13 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     disp.init().await.expect("Display initialization");
     disp.flush().await.expect("Cleans the display");
 
-
     loop {
+        disp.clear(BinaryColor::Off).expect("Clearing the display");
         let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
 
         let mut buffer = ryu::Buffer::new();
-        // let printed = buffer.format(measurement.altitude.get::<foot>()); // measurement isn't shared properly here.
-        let printed = buffer.format(1.0034);
+        let val = SHARED.wait().await;
+        let printed = buffer.format(val);
         Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
             .draw(&mut disp)
             .expect("Drawing text");
