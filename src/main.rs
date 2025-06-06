@@ -44,14 +44,15 @@ async fn main(spawner: Spawner) {
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
 
-    // This is one measurement using the BMP
-    info!("Initializing BMP...");
     spawner.must_spawn(measure(i2c_bus));   
     spawner.must_spawn(display(i2c_bus));
 }
 
 #[embassy_executor::task]
 async fn measure(i2c_bus: &'static I2c1Bus) {
+
+    // This is one measurement using the BMP
+    info!("Initializing BMP...");
     let i2c_sensor = I2cDevice::new(i2c_bus);
 
     // let bmp390_config = bmp390::Configuration::default(); // default configuration
