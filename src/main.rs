@@ -41,8 +41,8 @@ async fn main(spawner: Spawner) {
     let i2c = twim::Twim::new(
         p.TWISPI0, 
         Irqs, 
-        p.P0_27, // SDA
-        p.P0_28, // SCL
+        p.P0_04, // SDA P0_27 nrfdk, P0_04 xiao
+        p.P0_05, // SCL P0_28 nrfdk, P0_05 xiao
         twim_config);
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
@@ -98,7 +98,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
     let interface = I2CDisplayInterface::new(i2c_display); 
-    let mut disp = Ssd1306Async::new(interface, DisplaySize64x32, rotation::DisplayRotation::Rotate0)
+    let mut disp = Ssd1306Async::new(interface, DisplaySize128x64, rotation::DisplayRotation::Rotate0)
     .into_buffered_graphics_mode();
     
     disp.init().await.expect("Display initialization");
@@ -116,6 +116,5 @@ async fn display(i2c_bus: &'static I2c1Bus) {
             .expect("Drawing text");
     
         disp.flush().await.expect("Render display");
-        Timer::after_secs(1).await;
     }
 }
