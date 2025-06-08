@@ -66,14 +66,14 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
             mode: bmp390::PowerMode::Normal,
         },
         oversampling: bmp390::Osr {
-            pressure: bmp390::Oversampling::X8,
+            pressure: bmp390::Oversampling::X16,
             temperature: bmp390::Oversampling::None,
         },
         output_data_rate: bmp390::Odr {
             odr_sel: bmp390::OdrSel::ODR_50,
         },
         iir_filter: bmp390::Config {
-            iir_filter: bmp390::IirFilter::coef_3,
+            iir_filter: bmp390::IirFilter::coef_15,
         },
     };
 
