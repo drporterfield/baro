@@ -62,12 +62,12 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
     let bmp390_config = bmp390::Configuration { 
         power_control: bmp390::PowerControl {
             enable_pressure: true,
-            enable_temperature: false,
+            enable_temperature: true,
             mode: bmp390::PowerMode::Normal,
         },
         oversampling: bmp390::Osr {
-            pressure: bmp390::Oversampling::X16,
-            temperature: bmp390::Oversampling::None,
+            pressure: bmp390::Oversampling::X8,
+            temperature: bmp390::Oversampling::X1,
         },
         output_data_rate: bmp390::Odr {
             odr_sel: bmp390::OdrSel::ODR_50,
