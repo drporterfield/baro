@@ -77,7 +77,6 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
         },
     };
 
-
     let mut sensor = Bmp390::try_new(i2c_sensor, bmp390::Address::Up, Delay, &bmp390_config)
         .await
         .unwrap();
