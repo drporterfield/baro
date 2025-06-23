@@ -10,7 +10,7 @@ use embassy_nrf::{ bind_interrupts, peripherals };
 use embassy_nrf::twim::{ self, Twim };
 use embassy_sync::mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
-use embedded_graphics::{mono_font::ascii::FONT_5X8, text::Text};
+use embedded_graphics::{mono_font::ascii::FONT_7X13, text::Text};
 use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor, prelude::*};
 use embassy_time::{ Timer, Delay };
 use static_cell::StaticCell;
@@ -97,7 +97,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
     let interface = I2CDisplayInterface::new(i2c_display); 
-    let mut disp = Ssd1306Async::new(interface, DisplaySize128x64, rotation::DisplayRotation::Rotate0)
+    let mut disp = Ssd1306Async::new(interface, DisplaySize64x32, rotation::DisplayRotation::Rotate0)
     .into_buffered_graphics_mode();
     
     disp.init().await.expect("Display initialization");
@@ -105,7 +105,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
 
     loop {
         disp.clear(BinaryColor::Off).expect("Clearing the display");
-        let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
+        let style = MonoTextStyle::new(&FONT_7X13, BinaryColor::On);
 
         let mut buffer = ryu::Buffer::new();
         let val = SHARED.wait().await;
