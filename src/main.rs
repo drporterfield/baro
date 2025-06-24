@@ -1,9 +1,8 @@
 //! Reads the Barometric Pressure, Temperature, and Altitude
-
 #![no_std]
 #![no_main]
 
-use defmt::*;
+use defmt::info;
 use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
@@ -19,6 +18,8 @@ use bmp390::{Bmp390};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
 use embassy_sync::signal::Signal;
 use uom::si::length::foot;
+use heapless::String;
+use core::fmt::Write;
 
 static SHARED: Signal<ThreadModeRawMutex, f32> = Signal::new();
 
@@ -85,7 +86,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
         let measurement = sensor.measure().await.unwrap();
         defmt::info!("Measurement: {}", measurement);
         SHARED.signal(measurement.altitude.get::<foot>());
-        Timer::after_secs(1).await;
+        Timer::after_millis(20).await;
     }
 
     
@@ -109,8 +110,9 @@ async fn display(i2c_bus: &'static I2c1Bus) {
 
         let mut buffer = ryu::Buffer::new();
         let val = SHARED.wait().await;
-        let printed = buffer.format(val);
-        Text::new(&printed, Point::new(0, 12), style) // (10, 24) halved these for 64x32
+        let mut heapless_string: String<32> = String::new();
+        write!(heapless_string, "{:.2}", val).expect("format failure");
+        Text::new(&heapless_string, Point::new(0, 12), style) // (10, 24) halved these for 64x32
             .draw(&mut disp)
             .expect("Drawing text");
     
