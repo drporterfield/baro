@@ -109,7 +109,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
         let style = MonoTextStyle::new(&FONT_5X8, BinaryColor::On);
         let val = SHARED.wait().await;
         let mut heapless_string: String<32> = String::new();
-        let _ = write!(heapless_string, "{:.2}", val).expect("format failure");
+        write!(heapless_string, "{:.2}", val).expect("format failure");
         Text::new(&heapless_string, Point::new(0, 12), style) // (10, 24) halved these for 64x32
             .draw(&mut disp)
             .expect("Drawing text");
