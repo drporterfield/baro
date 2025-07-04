@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{info, unwrap};
+use defmt::{info};
 use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
