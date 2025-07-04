@@ -50,9 +50,10 @@ async fn main(spawner: Spawner) {
     let i2c_bus = I2C_BUS.init(i2c_bus);
     let btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
 
-    unwrap!(spawner.spawn(measure(i2c_bus)));   
-    unwrap!(spawner.spawn(display(i2c_bus)));
-    unwrap!(spawner.spawn(click(btn1)));
+    // note: must_spawn will panic if anything goes wrong here.
+    spawner.must_spawn(measure(i2c_bus));   
+    spawner.must_spawn(display(i2c_bus));
+    spawner.must_spawn(click(btn1));
 }
 
 #[embassy_executor::task]
