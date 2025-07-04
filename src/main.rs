@@ -48,12 +48,22 @@ async fn main(spawner: Spawner) {
         twim_config);
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
-    let btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
+    let mut btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
 
     // note: must_spawn will panic if anything goes wrong here.
     spawner.must_spawn(measure(i2c_bus));   
     spawner.must_spawn(display(i2c_bus));
-    spawner.must_spawn(click(btn1));
+    // spawner.must_spawn(click(btn1)); // The main function is also async, so we can just put the code here for it.
+
+    loop{
+        btn1.wait_for_low().await;
+        info!("Button pressed!");
+
+        btn1.wait_for_high().await;
+        info!("Button released!"); 
+
+        // TODO: Toggle timer
+    }
 }
 
 #[embassy_executor::task]
@@ -121,18 +131,5 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     
         disp.flush().await.expect("Render display");
         heapless_string.clear(); // if we don't clear the string, it will write to the next available position.
-    }
-}
-
-#[embassy_executor::task()]
-async fn click(mut pin: Input<'static>){
-    loop{
-        pin.wait_for_low().await;
-        info!("Button pressed!");
-
-        pin.wait_for_high().await;
-        info!("Button released!"); 
-
-        // TODO: Toggle timer
     }
 }
