@@ -2,11 +2,12 @@
 #![no_std]
 #![no_main]
 
-use defmt::info;
+use defmt::{info, unwrap};
 use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
 use embassy_nrf::twim::{ self, Twim };
+use embassy_nrf::gpio::{Input, Pull};
 use embassy_sync::mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
 use embedded_graphics::{mono_font::ascii::FONT_7X13, text::Text};
@@ -47,9 +48,11 @@ async fn main(spawner: Spawner) {
         twim_config);
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
+    let btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
 
-    spawner.must_spawn(measure(i2c_bus));   
-    spawner.must_spawn(display(i2c_bus));
+    unwrap!(spawner.spawn(measure(i2c_bus)));   
+    unwrap!(spawner.spawn(display(i2c_bus)));
+    unwrap!(spawner.spawn(click(btn1)));
 }
 
 #[embassy_executor::task]
@@ -98,7 +101,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
     let interface = I2CDisplayInterface::new(i2c_display); 
-    let mut disp = Ssd1306Async::new(interface, DisplaySize64x32, rotation::DisplayRotation::Rotate0)
+    let mut disp = Ssd1306Async::new(interface, DisplaySize128x64, rotation::DisplayRotation::Rotate0)
     .into_buffered_graphics_mode();
     
     disp.init().await.expect("Display initialization");
@@ -116,5 +119,19 @@ async fn display(i2c_bus: &'static I2c1Bus) {
             .expect("Drawing text");
     
         disp.flush().await.expect("Render display");
+        heapless_string.clear(); // if we don't clear the string, it will write to the next available position.
+    }
+}
+
+#[embassy_executor::task()]
+async fn click(mut pin: Input<'static>){
+    loop{
+        pin.wait_for_low().await;
+        info!("Button pressed!");
+
+        pin.wait_for_high().await;
+        info!("Button released!"); 
+
+        // TODO: Toggle timer
     }
 }
