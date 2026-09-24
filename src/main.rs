@@ -43,16 +43,17 @@ async fn main(spawner: Spawner) {
     let i2c = twim::Twim::new(
         p.TWISPI0, 
         Irqs, 
-        p.P0_04, // SDA P0_27 nrfdk, P0_04 xiao
-        p.P0_05, // SCL P0_28 nrfdk, P0_05 xiao
+        p.P0_27, // SDA P0_27 nrfdk, P0_04 xiao
+        p.P0_28, // SCL P0_28 nrfdk, P0_05 xiao
         twim_config);
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
-    let mut btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
+    let mut btn1 = Input::new(p.P0_11, Pull::Up); // This is the USER D1 button on the breakout board.
 
     // note: must_spawn will panic if anything goes wrong here.
-    spawner.must_spawn(measure(i2c_bus));   
+
     spawner.must_spawn(display(i2c_bus));
+    spawner.must_spawn(measure(i2c_bus));   
     // spawner.must_spawn(click(btn1)); // The main function is also async, so we can just put the code here for it.
 
     loop{
