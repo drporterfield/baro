@@ -40,7 +40,7 @@ async fn main(spawner: Spawner) {
     static I2C_BUS: StaticCell<I2c1Bus> = StaticCell::new();
     
     let twim_config = twim::Config::default();
-    let i2c = twim::Twim::new(
+    let i2c = Twim::new(
         p.TWISPI0, 
         Irqs, 
         p.P0_27, // SDA P0_27 nrfdk, P0_04 xiao
@@ -50,11 +50,11 @@ async fn main(spawner: Spawner) {
     let i2c_bus = I2C_BUS.init(i2c_bus);
     let mut btn1 = Input::new(p.P0_11, Pull::Up); // This is the USER D1 button on the breakout board.
 
-    // note: must_spawn will panic if anything goes wrong here.
+    // note: must_spawn will panic if anything goes wrong here
 
+    // spawner.must_spawn(measure(i2c_bus));   
     spawner.must_spawn(display(i2c_bus));
-    spawner.must_spawn(measure(i2c_bus));   
-    // spawner.must_spawn(click(btn1)); // The main function is also async, so we can just put the code here for it.
+    //spawner.must_spawn(click(btn1)); // The main function is also async, so we can just put the code here for it.
 
     loop{
         btn1.wait_for_low().await;
@@ -78,7 +78,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
     let bmp390_config = bmp390::Configuration { 
         power_control: bmp390::PowerControl {
             enable_pressure: true,
-            enable_temperature: true,
+            enable_temperature: false,
             mode: bmp390::PowerMode::Normal,
         },
         oversampling: bmp390::Osr {
@@ -103,8 +103,6 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
         SHARED.signal(measurement.altitude.get::<foot>());
         Timer::after_millis(20).await;
     }
-
-    
 }
 
 #[embassy_executor::task]
@@ -112,7 +110,8 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     // Intended to be a hello world with the display. 
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
-    let interface = I2CDisplayInterface::new(i2c_display); 
+    let address = 0x3D; //3D
+    let interface = I2CDisplayInterface::new_custom_address(i2c_display, address); 
     let mut disp = Ssd1306Async::new(interface, DisplaySize128x64, rotation::DisplayRotation::Rotate0)
     .into_buffered_graphics_mode();
     
@@ -120,17 +119,20 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     disp.flush().await.expect("Cleans the display");
     let mut heapless_string: String<32> = String::new();
 
+
+
     loop {
-        disp.clear(BinaryColor::Off).expect("Clearing the display");
+        disp.clear(BinaryColor::On).expect("Clearing the display");
         let style = MonoTextStyle::new(&FONT_7X13, BinaryColor::On);
 
         let val = SHARED.wait().await;
         write!(heapless_string, "{:.1}", val).expect("format failure");
-        Text::new(&heapless_string, Point::new(0, 12), style) // (10, 24) halved these for 64x32
-            .draw(&mut disp)
-            .expect("Drawing text");
+        // Text::new(&heapless_string, Point::new(0, 12), style) // (10, 24) halved these for 64x32
+        //     .draw(&mut disp)
+        //     .expect("Drawing text");
+        Text::new("Hello Violet!", Point::new(20, 30), style).draw(&mut disp).unwrap(); // (10, 24) halved these for 64x32
     
-        disp.flush().await.expect("Render display");
+        disp.flush().await.unwrap();
         heapless_string.clear(); // if we don't clear the string, it will write to the next available position.
     }
 }
