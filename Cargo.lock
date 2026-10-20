@@ -40,6 +40,7 @@ name = "baro"
 version = "0.1.0"
 dependencies = [
  "bmp390",
+ "bmp581",
  "cortex-m",
  "cortex-m-rt",
  "defmt 0.3.100",
@@ -104,6 +105,15 @@ dependencies = [
  "embedded-hal-async",
  "libm",
  "uom",
+]
+
+[[package]]
+name = "bmp581"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2913470059a31a77b307ad757189252962f6d56843c5665b3033d2e8c5739d77"
+dependencies = [
+ "embedded-hal 1.0.0",
 ]
 
 [[package]]

@@ -6,16 +6,18 @@ use defmt::{info};
 use embassy_embedded_hal::shared_bus::asynch::i2c::{I2cDevice};
 use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
+use embassy_nrf::peripherals::TWISPI0;
 use embassy_nrf::twim::{ self, Twim };
 use embassy_nrf::gpio::{Input, Pull};
 use embassy_sync::mutex::Mutex; 
-use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
+use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex, CriticalSectionRawMutex};
 use embedded_graphics::{mono_font::ascii::FONT_7X13, text::Text};
 use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor, prelude::*};
-use embassy_time::{ Timer, Delay };
+use embassy_time::{ Delay, Duration, Ticker, block_for };
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
-use bmp390::{Bmp390};
+use bmp581::{Bmp581, I2cAddr};
+use bmp581::types::{Odr, Osr, OsrConfig, PowerMode};
 use ssd1306::{prelude::*, rotation, I2CDisplayInterface, Ssd1306Async};
 use embassy_sync::signal::Signal;
 use uom::si::length::foot;
@@ -26,9 +28,20 @@ static SHARED: Signal<ThreadModeRawMutex, f32> = Signal::new();
 
 type I2c1Bus = Mutex<NoopRawMutex, Twim<'static, peripherals::TWISPI0>>;
 
+const BMP_ADDR: I2cAddr = I2cAddr::Alternative;
+
 bind_interrupts!(struct Irqs {
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
 });
+
+#[derive(Clone, Copy)]
+pub struct Measurement {
+    pub pressure_pa: f32,
+    pub temp_c: f32,
+}
+
+pub static MEASUREMENT: Signal<CriticalSectionRawMutex, Measurement> = Signal::new();
+
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -53,46 +66,53 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(measure(i2c_bus));   
     // Timer::after_millis(100).await;
     // spawner.must_spawn(display(i2c_bus));
+    loop {
+        let r = MEASUREMENT.wait().await;
+        defmt::info!("{} Pa, {} C", r.pressure_pa, r.temp_c);
+    }
 }
 
 #[embassy_executor::task]
-async fn measure(i2c_bus: &'static I2c1Bus) {
+async fn measure(bus: &'static I2c1Bus) {
+    // One-time setup
+    {
+        let mut twim = bus.lock().await;
+        let mut sensor = Bmp581::new_i2c(&mut *twim, BMP_ADDR);
+        
+        // BMP581
+        // sensor.init(&mut Delay).unwrap();
 
-    // This is one measurement using the BMP
-    info!("Initializing BMP...");
-    let i2c_sensor = I2cDevice::new(i2c_bus);
+        //BMP585
+        sensor.soft_reset().unwrap();
+        block_for(Duration::from_millis(2));
+        let id = sensor.get_chip_id().unwrap();
+        defmt::info!("BMP58x chip id: {=u8:#x}", id);
+        if id != 0x50 && id != 0x51 {
+            defmt::panic!("unexpected chip id {=u8:#x}", id);
+        }
 
-    // let bmp390_config = bmp390::Configuration::default(); 
-    let bmp390_config = bmp390::Configuration { 
-        power_control: bmp390::PowerControl {
-            enable_pressure: true,
-            enable_temperature: true,
-            mode: bmp390::PowerMode::Normal,
-        },
-        oversampling: bmp390::Osr {
-            pressure: bmp390::Oversampling::X1,
-            temperature: bmp390::Oversampling::X1,
-        },
-        output_data_rate: bmp390::Odr {
-            odr_sel: bmp390::OdrSel::ODR_50,
-        },
-        iir_filter: bmp390::Config {
-            iir_filter: bmp390::IirFilter::coef_15,
-        },
-    };
+        sensor.set_osr_config(OsrConfig {
+            pressure_enable: true,
+            osr_pressure: Osr::Osr128,
+            osr_temperature: Osr::Osr8,
+        }).unwrap();
+        sensor.set_odr(Odr::Hz10_000).unwrap();
+        sensor.set_power_mode(PowerMode::Normal).unwrap();
+    } // lock released here, so the screen can use the bus
 
-    let mut sensor = Bmp390::try_new(i2c_sensor, bmp390::Address::Up, Delay, &bmp390_config)
-        .await
-        .unwrap();
-    loop{
-        // take one measurement and print it to info
-        let measurement = sensor.measure().await.unwrap();
-        defmt::info!("Measurement: {}", measurement);
-        SHARED.signal(measurement.altitude.get::<foot>());
-        Timer::after_millis(500).await;
+    let mut ticker = Ticker::every(Duration::from_millis(100));
+    loop {
+        ticker.next().await;
+        let result = {
+            let mut twim = bus.lock().await;
+            let mut sensor = Bmp581::new_i2c(&mut *twim, BMP_ADDR);
+            sensor.read_pressure().and_then(|p| Ok((p, sensor.read_temperature()?)))
+        };
+        match result {
+            Ok((p, t)) => MEASUREMENT.signal(Measurement { pressure_pa: p, temp_c: t }),
+            Err(e) => defmt::warn!("bmp58x: {}", defmt::Debug2Format(&e)),
+        }
     }
-
-    
 }
 
 #[embassy_executor::task]
