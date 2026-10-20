@@ -8,7 +8,7 @@ use embassy_executor::Spawner;
 use embassy_nrf::{ bind_interrupts, peripherals };
 use embassy_nrf::twim::{ self, Twim };
 use embassy_nrf::gpio::{Input, Pull};
-use embassy_sync::mutex::Mutex;
+use embassy_sync::mutex::Mutex; 
 use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
 use embedded_graphics::{mono_font::ascii::FONT_7X13, text::Text};
 use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor, prelude::*};
@@ -43,27 +43,16 @@ async fn main(spawner: Spawner) {
     let i2c = twim::Twim::new(
         p.TWISPI0, 
         Irqs, 
-        p.P0_04, // SDA P0_27 nrfdk, P0_04 xiao
-        p.P0_05, // SCL P0_28 nrfdk, P0_05 xiao
+        p.P0_27, // SDA P0_27 nrfdk, P0_04 xiao
+        p.P0_28, // SCL P0_28 nrfdk, P0_05 xiao
         twim_config);
     let i2c_bus = Mutex::new(i2c);
     let i2c_bus = I2C_BUS.init(i2c_bus);
-    let mut btn1 = Input::new(p.P0_03, Pull::Up); // This is the USER D1 button on the breakout board.
 
     // note: must_spawn will panic if anything goes wrong here.
     spawner.must_spawn(measure(i2c_bus));   
-    spawner.must_spawn(display(i2c_bus));
-    // spawner.must_spawn(click(btn1)); // The main function is also async, so we can just put the code here for it.
-
-    loop{
-        btn1.wait_for_low().await;
-        info!("Button pressed!");
-
-        btn1.wait_for_high().await;
-        info!("Button released!"); 
-
-        // TODO: Toggle timer
-    }
+    // Timer::after_millis(100).await;
+    // spawner.must_spawn(display(i2c_bus));
 }
 
 #[embassy_executor::task]
@@ -81,7 +70,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
             mode: bmp390::PowerMode::Normal,
         },
         oversampling: bmp390::Osr {
-            pressure: bmp390::Oversampling::X8,
+            pressure: bmp390::Oversampling::X1,
             temperature: bmp390::Oversampling::X1,
         },
         output_data_rate: bmp390::Odr {
@@ -100,7 +89,7 @@ async fn measure(i2c_bus: &'static I2c1Bus) {
         let measurement = sensor.measure().await.unwrap();
         defmt::info!("Measurement: {}", measurement);
         SHARED.signal(measurement.altitude.get::<foot>());
-        Timer::after_millis(20).await;
+        Timer::after_millis(500).await;
     }
 
     
@@ -111,7 +100,7 @@ async fn display(i2c_bus: &'static I2c1Bus) {
     // Intended to be a hello world with the display. 
     info!("Initializing Display...");
     let i2c_display = I2cDevice::new(i2c_bus);
-    let interface = I2CDisplayInterface::new(i2c_display); 
+    let interface = I2CDisplayInterface::new_alternate_address(i2c_display); 
     let mut disp = Ssd1306Async::new(interface, DisplaySize128x64, rotation::DisplayRotation::Rotate0)
     .into_buffered_graphics_mode();
     
