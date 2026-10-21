@@ -80,16 +80,16 @@ async fn measure(bus: &'static I2c1Bus) {
         let mut sensor = Bmp581::new_i2c(&mut *twim, BMP_ADDR);
         
         // BMP581
-        // sensor.init(&mut Delay).unwrap();
+        sensor.init(&mut Delay).unwrap();
 
         //BMP585
-        sensor.soft_reset().unwrap();
-        block_for(Duration::from_millis(2));
-        let id = sensor.get_chip_id().unwrap();
-        defmt::info!("BMP58x chip id: {=u8:#x}", id);
-        if id != 0x50 && id != 0x51 {
-            defmt::panic!("unexpected chip id {=u8:#x}", id);
-        }
+        // sensor.soft_reset().unwrap();
+        // block_for(Duration::from_millis(2));
+        // let id = sensor.get_chip_id().unwrap();
+        // defmt::info!("BMP58x chip id: {=u8:#x}", id);
+        // if id != 0x50 && id != 0x51 {
+        //     defmt::panic!("unexpected chip id {=u8:#x}", id);
+        // }
 
         sensor.set_osr_config(OsrConfig {
             pressure_enable: true,
